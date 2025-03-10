@@ -73,7 +73,7 @@ test-travel-search-playwright-ts/
 
 ## Quickstart
 
-After installation, run the following:
+After installation, run the following. Will generate tests and execute them for all UI tests.
 
 ```bash
 npm run test:ui
