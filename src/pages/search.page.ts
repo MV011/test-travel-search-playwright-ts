@@ -4,7 +4,7 @@ import {SearchFiltersComponent} from "./components/search-filters.component";
 import {SearchConditions} from "../types/search-conditions";
 import {SearchFilterType} from "../enums/search-filter-type.enum";
 import {
-    extractNumericValue,
+    extractNumericValue, waitForLocatorAttributeToHaveValue,
     waitForLocatorToBeHidden,
     waitForLocatorToBeVisible,
     waitForRequests
@@ -28,6 +28,7 @@ export class SearchPage extends BasePage {
     private readonly searchBarCheckIn: Locator;
     private readonly searchBarCheckOut: Locator;
     private readonly guestCountButton: Locator;
+    private readonly loadingSpinner: Locator;
 
     private readonly resultPriceSelector = "//div[@jscontroller='yO02F']";
 
@@ -52,6 +53,7 @@ export class SearchPage extends BasePage {
         this.searchBarCheckIn = page.locator("(//div[@jscontroller='ViZxZe'])[1]");
         this.searchBarCheckOut = page.locator("(//div[@jscontroller='ViZxZe'])[2]");
         this.guestCountButton = page.locator(".YFfNHd > div[jscontroller='sX6Zff']");
+        this.loadingSpinner = page.locator("div[role='progressbar']");
     }
 
     async navigateTo(): Promise<void> {
@@ -66,7 +68,7 @@ export class SearchPage extends BasePage {
         await this.searchInput.click();
         await this.searchInput.fill(searchTerm);
 
-        if(pressEnter) {
+        if (pressEnter) {
             await this.searchInput.press("Enter");
             await this.waitForResultsListToLoad();
         }
@@ -92,14 +94,14 @@ export class SearchPage extends BasePage {
         await this.waitForResultsListToLoad();
     }
 
-    async setPriceRange(minPercentage?: number, maxPercentage?:number): Promise<void> {
+    async setPriceRange(minPercentage?: number, maxPercentage?: number): Promise<void> {
 
-        if(minPercentage) {
+        if (minPercentage) {
             await this.searchFilters.setMinPrice(minPercentage);
             await this.waitForResultsListToLoad();
         }
 
-        if(maxPercentage) {
+        if (maxPercentage) {
             await this.searchFilters.setMaxPrice(maxPercentage);
             await this.waitForResultsListToLoad();
         }
@@ -109,6 +111,7 @@ export class SearchPage extends BasePage {
         await this.searchFilters.setGuestRating(minRating);
         await this.waitForResultsListToLoad();
     }
+
     async toggleFreeCancellation(freeCancellation: string) {
         await this.searchFilters.toggleFreeCancellation(freeCancellation);
         await this.waitForResultsListToLoad();
@@ -127,12 +130,17 @@ export class SearchPage extends BasePage {
     async waitForResultsListToLoad(): Promise<void> {
         await waitForRequests(this.page, "batchexecute", async () => {
         });
-        await waitForLocatorToBeVisible(this.searchResultItemContainer.first());
+        for (const item of await this.loadingSpinner.all()) {
+            await waitForLocatorAttributeToHaveValue(this.page, item, "aria-hidden", "true");
+        }
 
         this.searchResultsList = await this.searchResultItemContainer.all();
     }
 
     async waitForSearchResultsToBeVisible(): Promise<void> {
+        for (const item of await this.loadingSpinner.all()) {
+            await waitForLocatorAttributeToHaveValue(this.page, item, "aria-hidden", "true");
+        }
         await waitForLocatorToBeVisible(this.searchResultItemContainer.first());
     }
 
@@ -204,7 +212,7 @@ export class SearchPage extends BasePage {
     async doSearchResultsHaveCurrencyCode(currencyCode: string): Promise<boolean> {
         for (const resultItem of this.searchResultsList) {
             let priceText = await resultItem.locator(this.resultPriceSelector).first().locator("span").last().innerText();
-            if(!priceText.includes(currencyCode)) {
+            if (!priceText.includes(currencyCode)) {
                 return true;
             }
         }

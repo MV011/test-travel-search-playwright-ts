@@ -30,7 +30,15 @@ export async function waitForLocatorToBeVisible(locator: Locator): Promise<boole
 export async function waitForLocatorToBeHidden(locator: Locator): Promise<boolean> {
     await locator.waitFor({state: 'hidden'});
     if (await locator.isVisible()) {
-        throw new Error(`Element is not visible after waiting: ${locator}`);
+        throw new Error(`Element is still visible after waiting: ${locator}`);
+    }
+    return true;
+}
+
+export async function waitForLocatorToBeDetached(locator: Locator): Promise<boolean> {
+    await locator.waitFor({state: 'detached'});
+    if (await locator.isVisible()) {
+        throw new Error(`Element is still present after waiting: ${locator}`);
     }
     return true;
 }
@@ -118,6 +126,36 @@ export async function waitForAttributeUpdate(page: Page, locator: Locator, attri
     ).catch(() => false);
     if (!result) {
         throw new Error(`Attribute '${attribute}' did not change from '${initialValue}' within ${timeout}ms timeout`);
+    }
+    return true;
+}
+
+/**
+ * Waits for the specified attribute of a given element (identified by the locator) to match the expected value within the specified timeout.
+ *
+ * @param {Page} page - The Playwright Page object representing the browser context.
+ * @param {Locator} locator - The Locator object identifying the target element in the DOM.
+ * @param {string} attribute - The name of the attribute to monitor for the specified value.
+ * @param {string} expectedValue - The expected value of the specified attribute.
+ * @param {number} [timeout=5000] - The maximum time in milliseconds to wait for the attribute to have the expected value (default is 5000ms).
+ * @return {Promise<boolean>} A promise that resolves to true if the attribute has the expected value before the timeout; otherwise, throws an error.
+ */
+export async function waitForLocatorAttributeToHaveValue(page: Page, locator: Locator, attribute: string, expectedValue: string, timeout: number = 5000): Promise<boolean> {
+    console.log(`Waiting for attribute '${attribute}' to have value '${expectedValue}'`);
+    const result = await page.waitForFunction(
+        async (args) => {
+            console.log(args.elementHandle?.getAttribute(args.attributeName));
+            return args.elementHandle && args.elementHandle.getAttribute(args.attributeName) === args.expectedValue;
+        },
+        {
+            elementHandle: await locator.elementHandle(),
+            attributeName: attribute,
+            expectedValue,
+            timeout: timeout
+        }
+    ).catch(() => false);
+    if (!result) {
+        throw new Error(`Attribute '${attribute}' did not change from '${expectedValue}' within ${timeout}ms timeout`);
     }
     return true;
 }
